@@ -5,7 +5,6 @@ import os
 import sys
 import youtube_dl
 import ffmpeg
-import time
 from pydub import AudioSegment
 import asyncio
 
@@ -169,20 +168,10 @@ async def option_command_func(main,sub,options,message):
             voice = await message.author.voice.channel.connect(timeout=100,reconnect=True)
             await message.channel.send('楽曲を再生します。')
             for option in options:
-                try:
-                    sourceAudio = AudioSegment.from_file(music_dict[option], "mp3")
-                    sleeptime = sourceAudio.duration_seconds
-                    voice.play(discord.FFmpegPCMAudio(music_dict[option]))
-                    await asyncio.sleep(sleeptime)
-                except youtube_dl.utils.DownloadError:
-                    #await message.channel.send('エラーが発生しました。')
-                    return 'エラーが発生しました。'
-
-            
-            try:
+                sourceAudio = AudioSegment.from_file(music_dict[option], "mp3")
+                sleeptime = sourceAudio.duration_seconds
                 voice.play(discord.FFmpegPCMAudio(music_dict[option]))
-                while voice.is_playing():
-                    time.sleep(2)
+                await asyncio.sleep(sleeptime+0.5)
                     
             await voice.disconnect()
 
