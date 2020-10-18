@@ -7,6 +7,7 @@ import youtube_dl
 import ffmpeg
 from pydub import AudioSegment
 import asyncio
+import time
 
 client = discord.Client()
 
@@ -15,7 +16,7 @@ commands = {'/Rhelp':{},
             '/Rdog':{},
             '/Roppai':{},
             '/Rtask':{'add':'task names','show':None,'del':'task names'},
-            '/Rmusic':{'show':None,'download':'url','del':'numbers','play':'numbers','play-loop':'numbars','add':'urls','remove':'numbers'}}
+            '/Rmusic':{'show':None,'clear':None,'download':'url','del':'numbers','play':'numbers','play-loop':'numbars','add':'urls','remove':'numbers'}}
 
 @client.event
 async def on_ready():
@@ -129,9 +130,21 @@ async def sub_command_func(main,sub,commands):
         if sub == 'show':
             out_message = []
             music_list = glob.glob('./music/*.mp3')
-            for i,music in enumerate(music_list):
-                out_message.append('{0}.'.format(i+1) + music[7:])
-        return '\n'.join(out_message)
+            if len(music_list) == 0:
+                return '楽曲が存在しません。'
+            else:
+                for i,music in enumerate(music_list):
+                    out_message.append('{0}.'.format(i+1) + music[7:])
+                return '\n'.join(out_message)
+
+        elif sub == 'clear':
+            target_dir = 'music'
+            os.rename(target_dir,'del_dir')#なんかエラー吐くから一度名前を変える
+            shutil.rmtree('del_dir')
+            os.makedirs(target_dir,exist_ok=False)
+            return 'すべての音楽ファイルを削除しました。\n新しいプレイリストを楽しみましょう！'
+
+
 
 @client.event
 async def option_command_func(main,sub,options,message):
@@ -139,8 +152,8 @@ async def option_command_func(main,sub,options,message):
     if main == '/Rmusic':
         music_dict = {}
 
+        #音楽のダウンロード
         if sub == "download":
-
             ydl_opts = {
                 'format': 'bestaudio/best',
                 'postprocessors': [{
@@ -152,15 +165,24 @@ async def option_command_func(main,sub,options,message):
             for option in options:
                 with youtube_dl.YoutubeDL(ydl_opts) as ydl:
                     ydl.download(['{0}'.format(option)])
-                    shutil.move(glob.glob('./*.mp3')[0], './music/'+glob.glob('./*.mp3')[0].split('-')[0]+'.mp3')
-            return "ダウンロード完了しました。"
+                    shutil.move(glob.glob('*.mp3')[0], './music/'+glob.glob('*.mp3')[0][:-16]+'.mp3')
+            return 'ダウンロード完了しました。'
 
+        #音楽の削除
         if sub == 'del':
-            pass
+            #ミュージックファイルの場所を辞書型で取得
+            music_list = glob.glob('./music/*.mp3')
+            for i,music in enumerate(music_list):
+                music_dict[str(i+1)] = music
+
+            for option in options:
+                print(music_dict[option])
+                os.remove(music_dict[option])
+                
+            return '楽曲の削除完了しました。'
 
         if sub == "play":
-            #print(type(channel))
-            #voice = channel.guild.voice_client
+            #ミュージックファイルの場所を辞書型で取得
             music_list = glob.glob('./music/*.mp3')
             for i,music in enumerate(music_list):
                 music_dict[str(i+1)] = music
@@ -174,14 +196,10 @@ async def option_command_func(main,sub,options,message):
                 await asyncio.sleep(sleeptime+0.5)
                     
             await voice.disconnect()
+            return '楽曲の再生を終了します。'
 
         if sub == "play-loop":
-            """
-            main   = '/Rmusic'
-            sub    = 'play'
-            option = 'numbers'
-            """
-            
+            #ミュージックファイルの場所を辞書型で取得
             music_list = glob.glob('./music/*.mp3')
             for i,music in enumerate(music_list):
                     music_dict[str(i+1)] = music
@@ -190,13 +208,11 @@ async def option_command_func(main,sub,options,message):
             await message.channel.send('楽曲を再生します。')
             while True:
                 for option in options:
-                    try:
-                        voice.play(discord.FFmpegPCMAudio(music_dict[option]))
-                        while voice.is_playing():
-                            time.sleep(2)
-                    except youtube_dl.utils.DownloadError:
-                        #await message.channel.send('エラーが発生しました。')
-                        return 'エラーが発生しました。'
+                    sourceAudio = AudioSegment.from_file(music_dict[option], "mp3")
+                    sleeptime = sourceAudio.duration_seconds
+                    voice.play(discord.FFmpegPCMAudio(music_dict[option]))
+                    await asyncio.sleep(sleeptime+0.5)
+            return '楽曲の再生を終了します。'
 
 
 async def play_music(path,message,voice):
@@ -211,4 +227,4 @@ async def play_music(path,message,voice):
         return 'エラーが発生しました。'
 
 #ボットを走らせる
-client.run("NzY1NTg0MDM2NjA0MTQ5Nzkx.X4W7sg.zR88hFOPuzSYdZV88Ds8oIy9oRw")
+client.run('NzY1NTg0MDM2NjA0MTQ5Nzkx.X4W7sg.tNlNmpZxHkoA27kV2E6YpEDhV3k')
